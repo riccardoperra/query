@@ -1,7 +1,13 @@
-import { computed, signal } from '@angular/core'
-import { TestBed, fakeAsync, flush, tick } from '@angular/core/testing'
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from '@angular/core'
+import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing'
 import { QueryClient } from '@tanstack/query-core'
-import { expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { render, waitFor } from '@testing-library/angular'
 import { injectQuery } from '../inject-query'
 import { provideAngularQuery } from '../providers'
 import {
@@ -9,7 +15,9 @@ import {
   getSimpleFetcherWithReturnData,
   rejectFetcher,
   simpleFetcher,
+  unwrapProxy,
 } from './test-utils'
+import type { CreateQueryResult } from '../types'
 
 describe('injectQuery', () => {
   beforeEach(() => {
@@ -215,4 +223,314 @@ describe('injectQuery', () => {
 
     expect(query.status()).toBe('error')
   }))
+})
+
+let queryKeyCount = 0
+
+export function queryKey(): Array<string> {
+  queryKeyCount++
+  return [`query_${queryKeyCount}`]
+}
+
+export function sleep(timeout: number): Promise<void> {
+  return new Promise((resolve, _reject) => {
+    setTimeout(resolve, timeout)
+  })
+}
+
+describe('test porting', () => {
+  const queryClient = new QueryClient()
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideAngularQuery(queryClient)],
+    })
+  })
+
+  it('should allow to set default data value', async () => {
+    const key = queryKey()
+
+    @Component({
+      selector: 'app-page',
+      template: `
+        <div>
+          <h1>{{ query.data() || 'default' }}</h1>
+        </div>
+      `,
+      changeDetection: ChangeDetectionStrategy.OnPush,
+    })
+    class PageComponent {
+      readonly query = injectQuery(() => ({
+        queryKey: key,
+        queryFn: async () => {
+          await sleep(10)
+          return 'test'
+        },
+      }))
+    }
+
+    const rendered = await render(PageComponent, {
+      providers: [provideAngularQuery(new QueryClient())],
+    })
+
+    rendered.getByText('default')
+
+    await waitFor(() => rendered.getByText('test'))
+  })
+
+  it('should return the correct states for a successful query', async () => {
+    const key = queryKey()
+    const states: Array<CreateQueryResult<string>> = []
+
+    @Component({
+      selector: 'app-page',
+      template: `
+        {{ render() }}
+
+        @if (state.isPending()) {
+          <span>pending</span>
+        }
+        @if (state.isLoadingError()) {
+          <span>{{ state.error().message }}</span>
+        }
+        <span>{{ state.data() }}</span>
+      `,
+      changeDetection: ChangeDetectionStrategy.OnPush,
+    })
+    class PageComponent {
+      readonly state = injectQuery(() => ({
+        queryKey: key,
+        queryFn: async () => {
+          await sleep(10)
+          return 'test'
+        },
+      }))
+
+      render(): void {
+        states.push(unwrapProxy(this.state))
+      }
+    }
+
+    const rendered = await render(PageComponent, {
+      providers: [provideAngularQuery(new QueryClient())],
+    })
+
+    await waitFor(() => rendered.getByText('test'))
+
+    expect(states.length).toEqual(2)
+
+    expect(states[0]).toEqual({
+      data: undefined,
+      dataUpdatedAt: 0,
+      error: null,
+      errorUpdatedAt: 0,
+      failureCount: 0,
+      failureReason: null,
+      errorUpdateCount: 0,
+      isError: false,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: true,
+      isPaused: false,
+      isPending: true,
+      isInitialLoading: true,
+      isLoading: true,
+      isLoadingError: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: true,
+      isSuccess: false,
+      refetch: expect.any(Function),
+      status: 'pending',
+      fetchStatus: 'fetching',
+    })
+
+    expect(states[1]).toEqual({
+      data: 'test',
+      dataUpdatedAt: expect.any(Number),
+      error: null,
+      errorUpdatedAt: 0,
+      failureCount: 0,
+      failureReason: null,
+      errorUpdateCount: 0,
+      isError: false,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
+      isPaused: false,
+      isPending: false,
+      isInitialLoading: false,
+      isLoading: false,
+      isLoadingError: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: true,
+      isSuccess: true,
+      refetch: expect.any(Function),
+      status: 'success',
+      fetchStatus: 'idle',
+    })
+  })
+
+  it('should return the correct states for a unsuccessful query', async () => {
+    const key = queryKey()
+    const states: Array<CreateQueryResult<never>> = []
+
+    @Component({
+      selector: 'app-page',
+      template: `
+        {{ render() }}
+
+        <div>
+          <h1>Status: {{ state.status() }}</h1>
+          <div>Failure Count: {{ state.failureCount() }}</div>
+          <div>Failure Reason: {{ state.failureReason()?.message }}</div>
+        </div>
+      `,
+      changeDetection: ChangeDetectionStrategy.OnPush,
+    })
+    class PageComponent {
+      readonly state = injectQuery(() => ({
+        queryKey: key,
+        queryFn: () => Promise.reject(new Error('rejected')),
+        retry: 1,
+        retryDelay: 1,
+      }))
+
+      render(): void {
+        states.push(unwrapProxy(this.state))
+      }
+    }
+
+    const rendered = await render(PageComponent, {
+      providers: [provideAngularQuery(new QueryClient())],
+    })
+
+    await waitFor(() => rendered.getByText('Status: error'))
+
+    expect(states[0]).toEqual({
+      data: undefined,
+      dataUpdatedAt: 0,
+      error: null,
+      errorUpdatedAt: 0,
+      failureCount: 0,
+      failureReason: null,
+      errorUpdateCount: 0,
+      isError: false,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: true,
+      isPaused: false,
+      isPending: true,
+      isInitialLoading: true,
+      isLoading: true,
+      isLoadingError: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: true,
+      isSuccess: false,
+      refetch: expect.any(Function),
+      status: 'pending',
+      fetchStatus: 'fetching',
+    })
+
+    expect(states[1]).toEqual({
+      data: undefined,
+      dataUpdatedAt: 0,
+      error: null,
+      errorUpdatedAt: 0,
+      failureCount: 1,
+      failureReason: new Error('rejected'),
+      errorUpdateCount: 0,
+      isError: false,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: true,
+      isPaused: false,
+      isPending: true,
+      isInitialLoading: true,
+      isLoading: true,
+      isLoadingError: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: true,
+      isSuccess: false,
+      refetch: expect.any(Function),
+      status: 'pending',
+      fetchStatus: 'fetching',
+    })
+
+    expect(states[2]).toEqual({
+      data: undefined,
+      dataUpdatedAt: 0,
+      error: new Error('rejected'),
+      errorUpdatedAt: expect.any(Number),
+      failureCount: 2,
+      failureReason: new Error('rejected'),
+      errorUpdateCount: 1,
+      isError: true,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
+      isPaused: false,
+      isPending: false,
+      isInitialLoading: false,
+      isLoading: false,
+      isLoadingError: true,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: true,
+      isSuccess: false,
+      refetch: expect.any(Function),
+      status: 'error',
+      fetchStatus: 'idle',
+    })
+  })
+
+  it('should set isFetchedAfterMount to true after a query has been fetched', async () => {
+    const key = queryKey()
+
+    await queryClient.prefetchQuery({
+      queryKey: key,
+      queryFn: () => 'prefetched',
+    })
+
+    @Component({
+      selector: 'app-page',
+      template: `
+        <div>data: {{ result.data() }}</div>
+        <div>isFetched: {{ result.isFetched() ? 'true' : 'false' }}</div>
+        <div>
+          isFetchedAfterMount:
+          {{ result.isFetchedAfterMount() ? 'true' : 'false' }}
+        </div>
+      `,
+      changeDetection: ChangeDetectionStrategy.OnPush,
+    })
+    class PageComponent {
+      readonly result = injectQuery(() => ({
+        queryKey: key,
+        queryFn: () => 'new data',
+      }))
+    }
+
+    const rendered = await render(PageComponent, {
+      providers: [provideAngularQuery(queryClient)],
+    })
+    rendered.getByText('data: prefetched')
+    rendered.getByText('isFetched: true')
+    rendered.getByText('isFetchedAfterMount: false')
+
+    await waitFor(() => {
+      rendered.getByText('data: new data')
+      rendered.getByText('isFetched: true')
+      rendered.getByText('isFetchedAfterMount: true')
+    })
+  })
+
+  it('should be able to watch a query without providing a query function', () => {})
 })
