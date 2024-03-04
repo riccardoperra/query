@@ -4,7 +4,7 @@ import {
   computed,
   signal,
 } from '@angular/core'
-import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing'
+import { TestBed, fakeAsync, flush, tick } from '@angular/core/testing'
 import { QueryClient } from '@tanstack/query-core'
 import { describe, expect, it, vi } from 'vitest'
 import { render, waitFor } from '@testing-library/angular'
@@ -34,11 +34,11 @@ describe('injectQuery', () => {
       }))
     })
 
-    expect(query.status()).toBe('pending')
-    expect(query.isPending()).toBe(true)
-    expect(query.isFetching()).toBe(true)
-    expect(query.isStale()).toBe(true)
-    expect(query.isFetched()).toBe(false)
+    expect(query.status).toBe('pending')
+    expect(query.isPending).toBe(true)
+    expect(query.isFetching).toBe(true)
+    expect(query.isStale).toBe(true)
+    expect(query.isFetched).toBe(false)
 
     flush()
   }))
@@ -53,12 +53,12 @@ describe('injectQuery', () => {
 
     flush()
 
-    expect(query.status()).toBe('success')
-    expect(query.data()).toBe('result2')
-    expect(query.isPending()).toBe(false)
-    expect(query.isFetching()).toBe(false)
-    expect(query.isFetched()).toBe(true)
-    expect(query.isSuccess()).toBe(true)
+    expect(query.status).toBe('success')
+    expect(query.data).toBe('result2')
+    expect(query.isPending).toBe(false)
+    expect(query.isFetching).toBe(false)
+    expect(query.isFetched).toBe(true)
+    expect(query.isSuccess).toBe(true)
   }))
 
   test('should reject and update signal', fakeAsync(() => {
@@ -72,14 +72,14 @@ describe('injectQuery', () => {
 
     flush()
 
-    expect(query.status()).toBe('error')
-    expect(query.data()).toBe(undefined)
-    expect(query.error()).toMatchObject({ message: 'Some error' })
-    expect(query.isPending()).toBe(false)
-    expect(query.isFetching()).toBe(false)
-    expect(query.isError()).toBe(true)
-    expect(query.failureCount()).toBe(1)
-    expect(query.failureReason()).toMatchObject({ message: 'Some error' })
+    expect(query.status).toBe('error')
+    expect(query.data).toBe(undefined)
+    expect(query.error).toMatchObject({ message: 'Some error' })
+    expect(query.isPending).toBe(false)
+    expect(query.isFetching).toBe(false)
+    expect(query.isError).toBe(true)
+    expect(query.failureCount).toBe(1)
+    expect(query.failureReason).toMatchObject({ message: 'Some error' })
   }))
 
   test('should update query on options contained signal change', fakeAsync(() => {
@@ -95,7 +95,7 @@ describe('injectQuery', () => {
     flush()
     expect(spy).toHaveBeenCalledTimes(1)
 
-    expect(query.status()).toBe('success')
+    expect(query.status).toBe('success')
 
     key.set(['key8'])
     TestBed.flushEffects()
@@ -118,13 +118,13 @@ describe('injectQuery', () => {
     })
 
     expect(spy).not.toHaveBeenCalled()
-    expect(query.status()).toBe('pending')
+    expect(query.status).toBe('pending')
 
     enabled.set(true)
     TestBed.flushEffects()
     flush()
     expect(spy).toHaveBeenCalledTimes(1)
-    expect(query.status()).toBe('success')
+    expect(query.status).toBe('success')
   }))
 
   test('should properly execute dependant queries', fakeAsync(() => {
@@ -142,25 +142,25 @@ describe('injectQuery', () => {
         computed(() => ({
           queryKey: ['dependant2'],
           queryFn: dependentQueryFn,
-          enabled: !!query1.data(),
+          enabled: !!query1.data,
         })),
       )
     })
 
-    expect(query1.data()).toStrictEqual(undefined)
-    expect(query2.fetchStatus()).toStrictEqual('idle')
+    expect(query1.data).toStrictEqual(undefined)
+    expect(query2.fetchStatus).toStrictEqual('idle')
     expect(dependentQueryFn).not.toHaveBeenCalled()
 
     tick()
     TestBed.flushEffects()
 
-    expect(query1.data()).toStrictEqual('Some data')
-    expect(query2.fetchStatus()).toStrictEqual('fetching')
+    expect(query1.data).toStrictEqual('Some data')
+    expect(query2.fetchStatus).toStrictEqual('fetching')
 
     flush()
 
-    expect(query2.fetchStatus()).toStrictEqual('idle')
-    expect(query2.status()).toStrictEqual('success')
+    expect(query2.fetchStatus).toStrictEqual('idle')
+    expect(query2.status).toStrictEqual('success')
     expect(dependentQueryFn).toHaveBeenCalledTimes(1)
     expect(dependentQueryFn).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['dependant2'] }),
@@ -217,11 +217,11 @@ describe('injectQuery', () => {
       }))
     })
 
-    expect(query.status()).toBe('pending')
+    expect(query.status).toBe('pending')
 
     flush()
 
-    expect(query.status()).toBe('error')
+    expect(query.status).toBe('error')
   }))
 })
 
@@ -253,7 +253,7 @@ describe('test porting', () => {
       selector: 'app-page',
       template: `
         <div>
-          <h1>{{ query.data() || 'default' }}</h1>
+          <h1>{{ query.data || 'default' }}</h1>
         </div>
       `,
       changeDetection: ChangeDetectionStrategy.OnPush,
@@ -286,13 +286,13 @@ describe('test porting', () => {
       template: `
         {{ render() }}
 
-        @if (state.isPending()) {
+        @if (state.isPending) {
           <span>pending</span>
         }
-        @if (state.isLoadingError()) {
-          <span>{{ state.error().message }}</span>
+        @if (state.isLoadingError) {
+          <span>{{ state.error.message }}</span>
         }
-        <span>{{ state.data() }}</span>
+        <span>{{ state.data }}</span>
       `,
       changeDetection: ChangeDetectionStrategy.OnPush,
     })
@@ -383,9 +383,9 @@ describe('test porting', () => {
         {{ render() }}
 
         <div>
-          <h1>Status: {{ state.status() }}</h1>
-          <div>Failure Count: {{ state.failureCount() }}</div>
-          <div>Failure Reason: {{ state.failureReason()?.message }}</div>
+          <h1>Status: {{ state.status }}</h1>
+          <div>Failure Count: {{ state.failureCount }}</div>
+          <div>Failure Reason: {{ state.failureReason?.message }}</div>
         </div>
       `,
       changeDetection: ChangeDetectionStrategy.OnPush,
@@ -502,11 +502,11 @@ describe('test porting', () => {
     @Component({
       selector: 'app-page',
       template: `
-        <div>data: {{ result.data() }}</div>
-        <div>isFetched: {{ result.isFetched() ? 'true' : 'false' }}</div>
+        <div>data: {{ result.data }}</div>
+        <div>isFetched: {{ result.isFetched ? 'true' : 'false' }}</div>
         <div>
           isFetchedAfterMount:
-          {{ result.isFetchedAfterMount() ? 'true' : 'false' }}
+          {{ result.isFetchedAfterMount ? 'true' : 'false' }}
         </div>
       `,
       changeDetection: ChangeDetectionStrategy.OnPush,

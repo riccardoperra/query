@@ -1,18 +1,18 @@
 /* istanbul ignore file */
 
-import type {
-  DefaultError,
-  DefinedInfiniteQueryObserverResult,
-  DefinedQueryObserverResult,
-  InfiniteQueryObserverOptions,
-  InfiniteQueryObserverResult,
-  MutateFunction,
-  MutationObserverOptions,
-  MutationObserverResult,
-  QueryKey,
-  QueryObserverOptions,
-  QueryObserverResult,
+import {
+  type DefaultError,
+  type DefinedInfiniteQueryObserverResult,
+  type DefinedQueryObserverResult,
+  type InfiniteQueryObserverOptions,
+  type MutateFunction,
+  type MutationObserverOptions,
+  type MutationObserverResult,
+  type QueryKey,
+  type QueryObserverOptions,
+  type QueryObserverResult,
 } from '@tanstack/query-core'
+import type { InfiniteQueryObserverResult } from '@tanstack/query-core'
 import type { MapToSignals } from './signal-proxy'
 
 export interface CreateBaseQueryOptions<
@@ -45,36 +45,6 @@ export interface CreateQueryOptions<
     'suspense'
   > {}
 
-type CreateStatusBasedQueryResult<
-  TStatus extends QueryObserverResult['status'],
-  TData = unknown,
-  TError = DefaultError,
-> = Extract<QueryObserverResult<TData, TError>, { status: TStatus }>
-
-export interface BaseQueryNarrowing<TData = unknown, TError = DefaultError> {
-  isSuccess: (
-    this: CreateBaseQueryResult<TData, TError>,
-  ) => this is CreateBaseQueryResult<
-    TData,
-    TError,
-    CreateStatusBasedQueryResult<'success', TData, TError>
-  >
-  isError: (
-    this: CreateBaseQueryResult<TData, TError>,
-  ) => this is CreateBaseQueryResult<
-    TData,
-    TError,
-    CreateStatusBasedQueryResult<'error', TData, TError>
-  >
-  isPending: (
-    this: CreateBaseQueryResult<TData, TError>,
-  ) => this is CreateBaseQueryResult<
-    TData,
-    TError,
-    CreateStatusBasedQueryResult<'pending', TData, TError>
-  >
-}
-
 export interface CreateInfiniteQueryOptions<
   TQueryFnData = unknown,
   TError = DefaultError,
@@ -97,34 +67,27 @@ export interface CreateInfiniteQueryOptions<
 export type CreateBaseQueryResult<
   TData = unknown,
   TError = DefaultError,
-  TState = QueryObserverResult<TData, TError>,
-> = BaseQueryNarrowing<TData, TError> &
-  MapToSignals<Omit<TState, keyof BaseQueryNarrowing>>
+> = QueryObserverResult<TData, TError>
 
 export type CreateQueryResult<
   TData = unknown,
   TError = DefaultError,
-> = CreateBaseQueryResult<TData, TError>
+> = QueryObserverResult<TData, TError>
 
 export type DefinedCreateQueryResult<
   TData = unknown,
   TError = DefaultError,
-  TDefinedQueryObserver = DefinedQueryObserverResult<TData, TError>,
-> = MapToSignals<TDefinedQueryObserver>
+> = DefinedQueryObserverResult<TData, TError>
 
 export type CreateInfiniteQueryResult<
   TData = unknown,
   TError = DefaultError,
-> = MapToSignals<InfiniteQueryObserverResult<TData, TError>>
+> = InfiniteQueryObserverResult<TData, TError>
 
 export type DefinedCreateInfiniteQueryResult<
   TData = unknown,
   TError = DefaultError,
-  TDefinedInfiniteQueryObserver = DefinedInfiniteQueryObserverResult<
-    TData,
-    TError
-  >,
-> = MapToSignals<TDefinedInfiniteQueryObserver>
+> = DefinedInfiniteQueryObserverResult<TData, TError>
 
 export interface CreateMutationOptions<
   TData = unknown,

@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core'
 import { notifyManager } from '@tanstack/query-core'
-import { signalProxy } from './signal-proxy'
+import { signalProxy2 } from './signal-proxy'
 import { lazyInit } from './lazy-init'
 import type { QueryClient, QueryKey, QueryObserver } from '@tanstack/query-core'
 import type { CreateBaseQueryOptions, CreateBaseQueryResult } from './types'
@@ -88,7 +88,7 @@ export function createBaseQuery<
       )
       destroyRef.onDestroy(unsubscribe)
 
-      return signalProxy(resultSignal) as CreateBaseQueryResult<TData, TError>
+      return signalProxy2(resultSignal)
     })
   })
 }

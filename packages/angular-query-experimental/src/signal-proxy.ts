@@ -46,3 +46,45 @@ export function signalProxy<TInput extends Record<string | symbol, any>>(
     },
   })
 }
+
+/**
+ * Exposes fields of an object passed via an Angular `Signal` as `Computed` signals.
+ *
+ * Functions on the object are passed through as-is.
+ *
+ * @param inputSignal - `Signal` that must return an object.
+ *
+ */
+export function signalProxy2<TInput extends Record<string | symbol, any>>(
+  inputSignal: Signal<TInput>,
+) {
+  const internalState = {} as TInput
+
+  return new Proxy<TInput>(internalState, {
+    get(target, prop) {
+      // first check if we have it in our internal state and return it
+      const computedField = target[prop]
+      if (computedField) return computedField()
+
+      // then, check if it's a function on the resultState and return it
+      const targetField = untracked(inputSignal)[prop]
+      if (typeof targetField === 'function') return targetField
+
+      // finally, create a computed field, store it and return it
+      // @ts-expect-error
+      return (target[prop] = computed(() => inputSignal()[prop]))()
+    },
+    has(_, prop) {
+      return !!untracked(inputSignal)[prop]
+    },
+    ownKeys() {
+      return Reflect.ownKeys(untracked(inputSignal))
+    },
+    getOwnPropertyDescriptor() {
+      return {
+        enumerable: true,
+        configurable: true,
+      }
+    },
+  })
+}
